@@ -1,4 +1,4 @@
-import { MetadataCache, TFile, Vault, Notice, getLinkpath } from "obsidian";
+import { MetadataCache, TFile, Vault, Notice, getLinkpath, stringifyYaml } from "obsidian";
 import DigitalGardenSettings from "src/DigitalGardenSettings";
 import { Base64 } from "js-base64";
 import { Octokit } from "@octokit/core";
@@ -117,14 +117,15 @@ export default class Publisher {
         }
 
         let text = await this.vault.cachedRead(file);
-        text = await this.convertFrontMatter(text, file.path);
+        text = await this.addNoteTitleToFrontmatter(text, file.path, file.basename);
         text = await this.createTranscludedText(text, file.path, 0);
         text = await this.convertDataViews(text, file.path);
         text = await this.convertLinksToFullPath(text, file.path);
         text = await this.removeObsidianComments(text);
         text = await this.createSvgEmbeds(text, file.path);
         text = await this.createBase64Images(text, file.path);
-        return text;
+        
+        return text.trim();
     }
 
 
@@ -147,7 +148,9 @@ export default class Publisher {
 
 
         const base64Content = Base64.encode(content);
-        const path = `src/site/notes/${filePath}`
+        
+        const isHome = content.contains("dg-home: true");
+        const path = `src/pages/${isHome ? 'index.md' : filePath}`
 
         const payload = {
             owner: this.settings.githubUserName,
@@ -201,12 +204,23 @@ export default class Publisher {
         return text;
     }
 
-    async convertFrontMatter(text: string, path: string): Promise<string> {
-        const publishedFrontMatter = this.getProcessedFrontMatter(path);
-        const replaced = text.replace(this.frontmatterRegex, (match, p1) => {
-            return publishedFrontMatter;
-        });
-        return replaced;
+    async addNoteTitleToFrontmatter(text: string, path: string, title: string): Promise<string> {
+        const frontmatter = this.metadataCache.getCache(path).frontmatter;
+
+        if (!frontmatter || !frontmatter["position"]) {
+            return `---\ntitle: ${title}\n---\n${text}`;
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { position, ...publishedFrontmatter } = frontmatter;
+        if (!publishedFrontmatter["title"]) {
+            publishedFrontmatter.title = title;
+        }
+
+        publishedFrontmatter.layout = `../layouts/Layout.astro`;
+
+        const stringifiedYaml = stringifyYaml(publishedFrontmatter);
+        return `---\n${stringifiedYaml.trim()}\n---\n${text.replace(this.frontmatterRegex, '')}`;
     }
 
     async convertDataViews(text: string, path:string): Promise<string> {
