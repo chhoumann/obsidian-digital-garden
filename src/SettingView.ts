@@ -1,10 +1,9 @@
 import DigitalGardenSettings from './DigitalGardenSettings';
-import { ButtonComponent, Modal, Notice, Setting, App, TAbstractFile, TFile } from 'obsidian';
+import { ButtonComponent, Modal, Notice, Setting, App, TFile } from 'obsidian';
 import axios from "axios";
 import { Octokit } from '@octokit/core';
 import { Base64 } from 'js-base64';
 import { arrayBufferToBase64 } from './utils';
-import DigitalGarden from 'main';
 import DigitalGardenSiteManager from './DigitalGardenSiteManager';
 
 export default class SettingView {
@@ -25,10 +24,7 @@ export default class SettingView {
 
     async initialize(prModal: Modal) {
         this.settingsRootElement.empty();
-        this.settingsRootElement.createEl('h2', { text: 'Settings ' });
-        this.settingsRootElement.createEl('span', { text: 'Remember to read the setup guide if you haven\'t already. It can be found ' });
-        this.settingsRootElement.createEl('a', { text: 'here.', href: "https://github.com/oleeskild/Obsidian-Digital-Garden" });
-
+        this.settingsRootElement.createEl('h2', { text: 'Christian\'s Note Publisher Settings ' });
 
         this.initializeGitHubRepoSetting();
         this.initializeGitHubUserNameSetting();
