@@ -88,15 +88,36 @@ export default class DigitalGardenSiteManager implements IDigitalGardenSiteManag
         const response = await octokit.request(`GET /repos/{owner}/{repo}/git/trees/{tree_sha}?recursive=${Math.ceil(Math.random() * 1000)}`, {
             owner: this.settings.githubUserName,
             repo: this.settings.githubRepo,
-            tree_sha: 'main'
+            tree_sha: 'master'
         });
 
         const files = response.data.tree;
         const notes: Array<{ path: string, sha: string }> = files.filter(
-            (x: { path: string; type: string; }) => x.path.startsWith("src/site/notes/") && x.type === "blob" && x.path !== "src/site/notes/notes.json");
+            (x: { path: string; type: string; }) => x.path.startsWith("src/pages/") && x.type === "blob" && x.path !== "src/site/notes/notes.json");
         const hashes: { [key: string]: string } = {};
+
         for (const note of notes) {
-            const vaultPath = note.path.replace("src/site/notes/", "");
+            const vaultPath = note.path.replace("src/pages/", "");
+
+            if (vaultPath === 'index.md') {
+                //@ts-expect-error
+                const homeNoteFile = app.vault.getMarkdownFiles().find(f => {
+                //@ts-expect-error
+                    const cf = app.metadataCache.getFileCache(f);
+                    if (cf?.frontmatter && cf.frontmatter["dg-home"])
+                        return true;
+
+                    return false;
+                });
+
+                if (homeNoteFile) {
+                    hashes[homeNoteFile.name] = note.sha;
+                }
+
+                continue;
+            }
+
+
             hashes[vaultPath] = note.sha;
         }
         return hashes;
