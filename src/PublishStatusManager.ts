@@ -40,10 +40,11 @@ export default class PublishStatusManager implements IPublishStatusManager{
         const marked = await this.publisher.getFilesMarkedForPublishing();
 
         for (const file of marked) {
-            const content = await this.publisher.generateMarkdown(file);
+            const content = await (await this.publisher.generateMarkdown(file));
 
             const localHash = generateBlobHash(content);
             const remoteHash = remoteNoteHashes[file.path];
+
             if (!remoteHash) {
                 unpublishedNotes.push(file);
             }
