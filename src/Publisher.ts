@@ -2,7 +2,7 @@ import { MetadataCache, TFile, Vault, Notice, getLinkpath, stringifyYaml } from 
 import DigitalGardenSettings from "src/DigitalGardenSettings";
 import { Base64 } from "js-base64";
 import { Octokit } from "@octokit/core";
-import { arrayBufferToBase64, generateUrlPath, kebabize } from "./utils";
+import { arrayBufferToBase64, generateUrlPath, getFileRemotePath, kebabize } from "./utils";
 import { vallidatePublishFrontmatter } from "./Validator";
 import { excaliDrawBundle, excalidraw } from "./constants";
 import { getAPI } from "obsidian-dataview";
@@ -62,7 +62,14 @@ export default class Publisher {
         }
 
         const octokit = new Octokit({ auth: this.settings.githubToken });
-        const path = `src/site/notes/${vaultFilePath}`;
+
+        //@ts-expect-error
+        const file = app.vault.getAbstractFileByPath(vaultFilePath);
+        //@ts-expect-error
+        const isHome = app.metadataCache.getFileCache(file).frontmatter["dg-home"];
+
+        console.log('path', vaultFilePath);
+        const path = getFileRemotePath(vaultFilePath, isHome);
 
         const payload = {
             owner: this.settings.githubUserName,
@@ -85,8 +92,6 @@ export default class Publisher {
             console.log(e)
             return false;
         }
-
-
 
         try {
             const response = await octokit.request('DELETE /repos/{owner}/{repo}/contents/{path}', payload);
@@ -150,7 +155,7 @@ export default class Publisher {
         const base64Content = Base64.encode(content);
         
         const isHome = content.contains("dg-home: true");
-        const path = `src/pages/${isHome ? 'index.md' : filePath}`
+        const path = getFileRemotePath(filePath, isHome);
 
         const payload = {
             owner: this.settings.githubUserName,

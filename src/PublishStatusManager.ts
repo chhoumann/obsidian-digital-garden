@@ -1,7 +1,7 @@
 import { IDigitalGardenSiteManager } from "./DigitalGardenSiteManager";
 import { TFile } from "obsidian";
 import { IPublisher } from "./Publisher";
-import { generateBlobHash } from "./utils";
+import { generateBlobHash, getFileRemotePath } from "./utils";
 
 export default class PublishStatusManager implements IPublishStatusManager{
     siteManager: IDigitalGardenSiteManager;
@@ -12,16 +12,17 @@ export default class PublishStatusManager implements IPublishStatusManager{
     }
 
     async getDeletedNotePaths(): Promise<Array<string>> {
-        
         const remoteNoteHashes = await this.siteManager.getNoteHashes();
         const marked = await this.publisher.getFilesMarkedForPublishing();
-        return this.generateDeletedNotePaths(remoteNoteHashes, marked);
+        const map = this.getLocalToRemotePathMap(marked);
+
+        return this.generateDeletedNotePaths(remoteNoteHashes, marked, map);
     }
 
-    private generateDeletedNotePaths(remoteNoteHashes: {[key:string]: string}, marked: TFile[]): Array<string> {
+    private generateDeletedNotePaths(remoteNoteHashes: {[key:string]: string}, marked: TFile[], map: {[path: string]: string}): Array<string> {
         const deletedNotePaths: Array<string> = [];
         Object.keys(remoteNoteHashes).forEach(key => {
-            if (!marked.find(f => f.path === key)) {
+            if (!marked.find(f => map[f.path] === key || f.path === key)) {
                 if(!key.endsWith(".js")){
                     deletedNotePaths.push(key);
                 }
@@ -30,22 +31,39 @@ export default class PublishStatusManager implements IPublishStatusManager{
 
         return deletedNotePaths;
     }
+
+    private getLocalToRemotePathMap(localFiles: TFile[]): { [path: string]: string; } { 
+        return localFiles.reduce((map, file) => {
+            //@ts-expect-error
+            const isHome = app.metadataCache.getFileCache(file).frontmatter["dg-home"];
+            
+            const remoteFileName = getFileRemotePath(file.basename, isHome, false);
+            map[file.path] = remoteFileName;
+            return map;
+        }, {} as { [key: string]: string; });
+    }
+
     async getPublishStatus(): Promise<PublishStatus> {
         const unpublishedNotes: Array<TFile> = [];
         const publishedNotes: Array<TFile> = [];
         const changedNotes: Array<TFile> = [];
 
-
         const remoteNoteHashes = await this.siteManager.getNoteHashes();
         const marked = await this.publisher.getFilesMarkedForPublishing();
+
+        const localToRemotePathMap = this.getLocalToRemotePathMap(marked);
 
         for (const file of marked) {
             const content = await (await this.publisher.generateMarkdown(file));
 
             const localHash = generateBlobHash(content);
-            const remoteHash = remoteNoteHashes[file.path];
+            // Remotehashes are stored with the remote file name, not the local file name, 
+            // so we need to map the local file name to the remote file name
+            // except for the home note, which is always index.md
+            const remoteHash = remoteNoteHashes[localToRemotePathMap[file.path]] ?? remoteNoteHashes[file.path];
 
             if (!remoteHash) {
+                console.log(`Note ${file.path} is not published yet.`);
                 unpublishedNotes.push(file);
             }
             else if (remoteHash === localHash) {
@@ -56,7 +74,8 @@ export default class PublishStatusManager implements IPublishStatusManager{
             }
         }
 
-        const deletedNotePaths = this.generateDeletedNotePaths(remoteNoteHashes, marked);
+        console.log(localToRemotePathMap);
+        const deletedNotePaths = this.generateDeletedNotePaths(remoteNoteHashes, marked, localToRemotePathMap);
 
         unpublishedNotes.sort((a, b) => a.path > b.path ? 1 : -1);
         publishedNotes.sort((a, b) => a.path > b.path ? 1 : -1);

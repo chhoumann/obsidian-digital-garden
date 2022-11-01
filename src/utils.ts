@@ -13,32 +13,58 @@ function arrayBufferToBase64(buffer: ArrayBuffer) {
 }
 
 function extractBaseUrl(url: string) {
-	return url && url.replace("https://", "").replace("http://", "").replace(/\/$/, '')
+	return (
+		url &&
+		url.replace("https://", "").replace("http://", "").replace(/\/$/, "")
+	);
 }
 
 function generateUrlPath(filePath: string): string {
-	if(!filePath){
+	if (!filePath) {
 		return filePath;
 	}
 	const extensionLess = filePath.substring(0, filePath.lastIndexOf("."));
-	const noteUrlPath = extensionLess.split("/").map(x => slugify(x)).join("/") + "/";
+	const noteUrlPath =
+		extensionLess
+			.split("/")
+			.map((x) => slugify(x))
+			.join("/") + "/";
 	return noteUrlPath;
 }
 
-function generateBlobHash(content: string){
-	const byteLength = (new TextEncoder().encode(content)).byteLength;
+function generateBlobHash(content: string) {
+	const byteLength = new TextEncoder().encode(content).byteLength;
 	const header = `blob ${byteLength}\0`;
 	const gitBlob = header + content;
 
 	return sha1(gitBlob).toString();
 }
 
-function kebabize(str: string){ 
-	return str.split('').map((letter, idx) => {
-	  return letter.toUpperCase() === letter
-	   ? `${idx !== 0 ? '-' : ''}${letter.toLowerCase()}`
-	   : letter;
-	}).join('');
- }
+function kebabize(str: string) {
+	return str
+		.split("")
+		.map((letter, idx) => {
+			return letter.toUpperCase() === letter
+				? `${idx !== 0 ? "-" : ""}${letter.toLowerCase()}`
+				: letter;
+		})
+		.join("");
+}
 
-export { arrayBufferToBase64, extractBaseUrl, generateUrlPath, generateBlobHash, kebabize};
+function getFileRemotePath(vaultFileName: string, isHome: boolean, fullPath=true) {
+	const dir = `src/pages/`;
+	if (isHome) return `${fullPath ? dir : ''}index.md`;
+	
+	const withoutExtension = vaultFileName.replace(".md", "");
+	const slugified = slugify(withoutExtension);
+	return `${fullPath ? dir : ''}${slugified}.md`;
+}
+
+export {
+	arrayBufferToBase64,
+	extractBaseUrl,
+	generateUrlPath,
+	generateBlobHash,
+	kebabize,
+	getFileRemotePath
+};
