@@ -68,7 +68,6 @@ export default class Publisher {
         //@ts-expect-error
         const isHome = app.metadataCache.getFileCache(file).frontmatter["dg-home"];
 
-        console.log('path', vaultFilePath);
         const path = getFileRemotePath(vaultFilePath, isHome);
 
         const payload = {
@@ -200,13 +199,7 @@ export default class Publisher {
         const obsidianCommentsRegex: RegExp = /%%.+?%%/gms;
         const obsidianCommentsMatches = textToBeProcessed.match(obsidianCommentsRegex);
 
-        if (obsidianCommentsMatches) {
-            for (const commentMatch of obsidianCommentsMatches) {
-                text = text.replace(commentMatch, '');
-            }
-        }
-
-        return text;
+        return text.replace(obsidianCommentsRegex, '');
     }
 
     async addNoteTitleToFrontmatter(text: string, path: string, title: string): Promise<string> {

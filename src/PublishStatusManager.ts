@@ -63,7 +63,6 @@ export default class PublishStatusManager implements IPublishStatusManager{
             const remoteHash = remoteNoteHashes[localToRemotePathMap[file.path]] ?? remoteNoteHashes[file.path];
 
             if (!remoteHash) {
-                console.log(`Note ${file.path} is not published yet.`);
                 unpublishedNotes.push(file);
             }
             else if (remoteHash === localHash) {
@@ -74,7 +73,6 @@ export default class PublishStatusManager implements IPublishStatusManager{
             }
         }
 
-        console.log(localToRemotePathMap);
         const deletedNotePaths = this.generateDeletedNotePaths(remoteNoteHashes, marked, localToRemotePathMap);
 
         unpublishedNotes.sort((a, b) => a.path > b.path ? 1 : -1);
